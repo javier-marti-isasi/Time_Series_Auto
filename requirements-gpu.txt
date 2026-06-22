@@ -1,0 +1,31 @@
+# Requirements for GPU environment (CUDA 12.1 compatible)
+# Usage: pip install -r requirements-gpu.txt
+
+--extra-index-url https://download.pytorch.org/whl/cu121
+
+# Core
+pandas>=2.0.0
+numpy>=1.24.0
+
+# Data I/O (parquet support for pandas)
+pyarrow>=12.0.0
+
+# Visualization
+matplotlib>=3.7.0
+plotly>=5.14.0
+Pillow>=10.0.0
+
+# ML / Forecasting
+catboost>=1.2.0
+statsmodels>=0.14.0
+
+# PyTorch (GPU wheel via extra-index-url above)
+torch>=2.0.0
+torchvision>=0.15.0
+torchaudio>=2.0.0
+
+# Chronos (Amazon Science)
+git+https://github.com/amazon-science/chronos-forecasting.git
+
+# MLOps (ClearML)
+clearml>=1.13.0

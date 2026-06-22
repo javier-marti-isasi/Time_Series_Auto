@@ -1,0 +1,76 @@
+{
+    "version": "0.2.0",
+    "configurations": [
+        {
+            "name": "Pipeline: 01 Create Processed",
+            "type": "debugpy",
+            "request": "launch",
+            "program": "${workspaceFolder}/src/01_create_processed.py",
+            "cwd": "${workspaceFolder}/src",
+            "console": "integratedTerminal",
+            "justMyCode": true,
+            "env": {
+                "PYTHONPATH": "${workspaceFolder}"
+            }
+        },
+        {
+            "name": "Pipeline: 02 Create Processed for Training",
+            "type": "debugpy",
+            "request": "launch",
+            "program": "${workspaceFolder}/src/02_create_processed_for_training.py",
+            "cwd": "${workspaceFolder}/src",
+            "console": "integratedTerminal",
+            "justMyCode": true,
+            "env": {
+                "PYTHONPATH": "${workspaceFolder}"
+            }
+        },
+        {
+            "name": "Pipeline: 03 Train and Evaluate",
+            "type": "debugpy",
+            "request": "launch",
+            "program": "${workspaceFolder}/src/03_train_and_evaluate.py",
+            "cwd": "${workspaceFolder}/src",
+            "console": "integratedTerminal",
+            "justMyCode": true,
+            "env": {
+                "PYTHONPATH": "${workspaceFolder}"
+            }
+        },
+        {
+            "name": "Pipeline: 04 Plot Predictions",
+            "type": "debugpy",
+            "request": "launch",
+            "program": "${workspaceFolder}/src/04_plot_predictions.py",
+            "cwd": "${workspaceFolder}/src",
+            "console": "integratedTerminal",
+            "justMyCode": true,
+            "env": {
+                "PYTHONPATH": "${workspaceFolder}"
+            }
+        },
+        {
+            "name": "Pipeline: 12 Train Clear ML",
+            "type": "debugpy",
+            "request": "launch",
+            "program": "${workspaceFolder}/src/12_train_clear_ml.py",
+            "cwd": "${workspaceFolder}/src",
+            "console": "integratedTerminal",
+            "justMyCode": true,
+            "env": {
+                "PYTHONPATH": "${workspaceFolder}"
+            }
+        }
+    ],
+    "tasks": {
+        "version": "2.0.0",
+        "tasks": [
+            {
+                "label": "Activate Conda Environment",
+                "type": "shell",
+                "command": "conda activate autolog_llm_decision",
+                "problemMatcher": []
+            }
+        ]
+    }
+}
