@@ -485,6 +485,18 @@ def main() -> None:
         name="config",
     )
     params = task.connect(params, name="catboost_params")
+    task.set_packages(
+        packages=[
+            "catboost==1.2.10",
+            "clearml==2.1.8",
+            "matplotlib==3.10.9",
+            "optuna==4.9.0",
+            "pandas==3.0.3",
+            "pillow==12.2.0",
+            "plotly==6.7.0",
+            "pyarrow==24.0.0",
+        ],
+    )
 
     if bool(int(connected_config["run_remotely"])):
         task.set_base_docker(
