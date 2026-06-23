@@ -207,7 +207,7 @@ def prepare_training_data(config: ForecastConfig) -> Dict[str, Any]:
     dataset = Dataset.get(
         dataset_name="competition_processed_for_training_month_h1",
         dataset_project="Time Series Auto",
-        dataset_version="1.0.2",
+        dataset_version="1.0.3",
         alias="competition_month_h1_input",
     )
     local_dataset_path = Path(dataset.get_local_copy())

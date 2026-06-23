@@ -33,23 +33,12 @@ def main() -> None:
 
         dataset_name = f"competition_processed_for_training_{aggregation}_h{horizon}"
 
-        try:
-            parent = Dataset.get(
-                dataset_name=dataset_name,
-                dataset_project="Time Series Auto",
-                dataset_version="1.0.0",
-            )
-        except Exception as e:
-            print(f"Parent dataset not found for {dataset_name}: {e}")
-            continue
-
-        print(f"Updating {dataset_name}: adding {parquet_file.name} as v1.0.2")
+        print(f"Updating {dataset_name}: adding {parquet_file.name} as v1.0.3")
 
         new_dataset = Dataset.create(
             dataset_name=dataset_name,
             dataset_project="Time Series Auto",
-            dataset_version="1.0.2",
-            parent_datasets=[parent.id],
+            dataset_version="1.0.3",
             dataset_tags=[aggregation, f"horizon_{horizon}", "parquet"],
         )
 
