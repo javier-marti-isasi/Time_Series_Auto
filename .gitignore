@@ -14,6 +14,9 @@ venv/
 env/
 
 .ipynb_checkpoints/
+notebooks/
+.vscode/
+README*.md
 
 .DS_Store
 Thumbs.db
