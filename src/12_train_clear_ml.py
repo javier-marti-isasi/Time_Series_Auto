@@ -32,14 +32,14 @@ PROJECT_ROOT = Path(__file__).resolve().parents[1]
 RESULTS_DIR = PROJECT_ROOT / "results"
 
 PROJECT_NAME = "Time Series Auto"
-EXPERIMENT_NAME = "Demo CatBoost Horizon 08"
+EXPERIMENT_NAME = "Demo CatBoost Horizon 12"
 OPTIMIZER_EXPERIMENT_NAME = f"{EXPERIMENT_NAME} HPO"
 PARAMS_MODE = "custom"  # "default", "aggresive" or "custom"
 RUN_REMOTELY = True
 TRAINING_EXECUTION_QUEUE = "default"
-PARAMS_OPTIMIZATION = False
-HPO_EXECUTION_QUEUE = "default"
-HPO_TOTAL_MAX_JOBS = 20
+PARAMS_OPTIMIZATION = True
+HPO_EXECUTION_QUEUE = "hpo"
+HPO_TOTAL_MAX_JOBS = 4 #20
 HPO_MAX_CONCURRENT_JOBS = 2
 
 
@@ -109,6 +109,105 @@ def build_demo_params(config: ForecastConfig) -> Dict[str, Any]:
     return custom_params
 
 
+def run_local_catboost_hyperparameter_optimization(
+    task: Task,
+    config: ForecastConfig,
+    base_params: Dict[str, Any],
+) -> None:
+    import optuna
+
+    prepared_data = prepare_training_data(config)
+
+    def objective(trial: optuna.Trial) -> float:
+        trial_params = dict(base_params)
+        trial_params.update(
+            {
+                "iterations": trial.suggest_int("iterations", 300, 1000, step=100),
+                "learning_rate": trial.suggest_float("learning_rate", 0.005, 0.05),
+                "depth": trial.suggest_int("depth", 4, 10),
+                "l2_leaf_reg": trial.suggest_float("l2_leaf_reg", 1.0, 10.0),
+                "early_stopping_rounds": trial.suggest_int("early_stopping_rounds", 50, 200, step=50),
+            }
+        )
+        model = train_catboost_demo_model(
+            train_df=prepared_data["train_df"],
+            valid_df=prepared_data["valid_df"],
+            feature_cols=prepared_data["feature_cols"],
+            cat_features=prepared_data["cat_features"],
+            config=config,
+            params=trial_params,
+        )
+        valid_metrics, _ = evaluate_catboost(
+            model=model,
+            test_df=prepared_data["valid_df"],
+            feature_cols=prepared_data["feature_cols"],
+            cat_features=prepared_data["cat_features"],
+            config=config,
+        )
+        valid_mae_value = float(valid_metrics.loc[0, "mae"])
+        valid_rmse_value = float(valid_metrics.loc[0, "rmse"])
+        valid_wape_value = float(valid_metrics.loc[0, "wape"])
+        valid_bias_value = float(valid_metrics.loc[0, "bias"])
+        task.get_logger().report_scalar(
+            title="hpo_valid_mae",
+            series=f"trial_{trial.number}",
+            value=valid_mae_value,
+            iteration=trial.number,
+        )
+        task.connect(
+            {
+                f"trial_{trial.number}_mae": f"{valid_mae_value:.4f}",
+                f"trial_{trial.number}_rmse": f"{valid_rmse_value:.4f}",
+                f"trial_{trial.number}_wape": f"{valid_wape_value:.4f}",
+                f"trial_{trial.number}_bias": f"{valid_bias_value:.4f}",
+            },
+            name="hpo_trial_metrics",
+        )
+        for param_name, param_value in trial_params.items():
+            trial.set_user_attr(param_name, param_value)
+        return valid_mae_value
+
+    study = optuna.create_study(direction="minimize")
+    study.optimize(objective, n_trials=HPO_TOTAL_MAX_JOBS, n_jobs=HPO_MAX_CONCURRENT_JOBS)
+    best_params = dict(base_params)
+    best_params.update(study.best_params)
+    best_model = train_catboost_demo_model(
+        train_df=prepared_data["train_df"],
+        valid_df=prepared_data["valid_df"],
+        feature_cols=prepared_data["feature_cols"],
+        cat_features=prepared_data["cat_features"],
+        config=config,
+        params=best_params,
+    )
+    test_metrics, _ = evaluate_catboost(
+        model=best_model,
+        test_df=prepared_data["test_df"],
+        feature_cols=prepared_data["feature_cols"],
+        cat_features=prepared_data["cat_features"],
+        config=config,
+    )
+    mae_value = float(test_metrics.loc[0, "mae"])
+    rmse_value = float(test_metrics.loc[0, "rmse"])
+    wape_value = float(test_metrics.loc[0, "wape"])
+    bias_value = float(test_metrics.loc[0, "bias"])
+    task.connect(
+        {
+            "best_value": float(study.best_value),
+            "best_params": study.best_params,
+        },
+        name="local_hpo_results",
+    )
+    task.connect(
+        {
+            "mae": f"{mae_value:.4f}",
+            "rmse": f"{rmse_value:.4f}",
+            "wape": f"{wape_value:.4f}",
+            "bias": f"{bias_value:.4f}",
+        },
+        name="metrics",
+    )
+
+
 def run_catboost_hyperparameter_optimization(base_task_id: str) -> None:
     optimizer_task = Task.init(
         project_name=PROJECT_NAME,
@@ -164,7 +263,9 @@ def run_catboost_hyperparameter_optimization(base_task_id: str) -> None:
         execution_queue=HPO_EXECUTION_QUEUE,
         max_number_of_concurrent_tasks=HPO_MAX_CONCURRENT_JOBS,
         total_max_jobs=HPO_TOTAL_MAX_JOBS,
+        min_iteration_per_job=1,
         max_iteration_per_job=1,
+        time_limit_per_job=60 * 60,
     )
     optimizer.start()
     optimizer.wait()
@@ -509,9 +610,16 @@ def main() -> None:
         )
 
     if bool(int(connected_config["params_optimization"])):
-        base_task_id = task.id
-        task.close()
-        run_catboost_hyperparameter_optimization(base_task_id=base_task_id)
+        if bool(int(connected_config["run_remotely"])):
+            base_task_id = task.id
+            task.close()
+            run_catboost_hyperparameter_optimization(base_task_id=base_task_id)
+            return
+        run_local_catboost_hyperparameter_optimization(
+            task=task,
+            config=config,
+            base_params=params,
+        )
         return
 
     prepared_data = prepare_training_data(config)
@@ -549,10 +657,17 @@ def main() -> None:
         config=config,
     )
 
+    valid_mae_value = float(valid_metrics.loc[0, "mae"])
     mae_value = float(test_metrics.loc[0, "mae"])
     rmse_value = float(test_metrics.loc[0, "rmse"])
     wape_value = float(test_metrics.loc[0, "wape"])
     bias_value = float(test_metrics.loc[0, "bias"])
+    task.get_logger().report_scalar(
+        title="valid_mae",
+        series="catboost",
+        value=valid_mae_value,
+        iteration=config.horizon_periods,
+    )
 
     task.connect(
         {
