@@ -6,6 +6,7 @@ from clearml import Dataset
 
 PROJECT_ROOT = Path(__file__).resolve().parents[1]
 DATA_DIR = PROJECT_ROOT / "data" / "Competition" / "processed_for_training"
+CLEARML_FILES_SERVER = "http://192.168.1.173:8081"
 
 
 def parse_file_info(file_name: str):
@@ -42,7 +43,7 @@ def main() -> None:
         )
 
         dataset.add_files(path=str(csv_file))
-        dataset.upload()
+        dataset.upload(output_url=CLEARML_FILES_SERVER)
         dataset.finalize()
 
         print(f"  -> Dataset ID: {dataset.id}")
