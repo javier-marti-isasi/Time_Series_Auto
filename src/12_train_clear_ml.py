@@ -487,6 +487,10 @@ def main() -> None:
     params = task.connect(params, name="catboost_params")
 
     if bool(int(connected_config["run_remotely"])):
+        task.set_base_docker(
+            docker_image="python:3.11-bullseye",
+            docker_arguments="--ipc=host",
+        )
         task.execute_remotely(
             queue_name=str(connected_config["training_execution_queue"]),
             exit_process=True,
