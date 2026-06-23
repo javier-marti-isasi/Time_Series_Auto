@@ -36,11 +36,12 @@ EXPERIMENT_NAME = "Demo CatBoost Horizon 12"
 OPTIMIZER_EXPERIMENT_NAME = f"{EXPERIMENT_NAME} HPO"
 PARAMS_MODE = "custom"  # "default", "aggresive" or "custom"
 RUN_REMOTELY = True
-TRAINING_EXECUTION_QUEUE = "default"
 PARAMS_OPTIMIZATION = True
-HPO_EXECUTION_QUEUE = "hpo"
 HPO_TOTAL_MAX_JOBS = 4 #20
 HPO_MAX_CONCURRENT_JOBS = 2
+
+TRAINING_EXECUTION_QUEUE = "default"
+HPO_EXECUTION_QUEUE = "hpo"
 
 
 def load_processed_for_training_dataset(
@@ -662,12 +663,6 @@ def main() -> None:
     rmse_value = float(test_metrics.loc[0, "rmse"])
     wape_value = float(test_metrics.loc[0, "wape"])
     bias_value = float(test_metrics.loc[0, "bias"])
-    task.get_logger().report_scalar(
-        title="valid_mae",
-        series="catboost",
-        value=valid_mae_value,
-        iteration=config.horizon_periods,
-    )
 
     task.connect(
         {
@@ -715,6 +710,13 @@ def main() -> None:
     task.upload_artifact(name="test_predictions", artifact_object=str(predictions_path))
     task.upload_artifact(name="valid_metrics", artifact_object=valid_metrics)
     task.upload_artifact(name="test_metrics", artifact_object=test_metrics)
+
+    task.get_logger().report_scalar(
+        title="valid_mae",
+        series="catboost",
+        value=valid_mae_value,
+        iteration=config.horizon_periods,
+    )
 
     print(f"Input dataset: {prepared_data['input_path']}")
     print(f"Train rows: {len(prepared_data['train_df'])}")
